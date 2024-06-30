@@ -247,11 +247,17 @@ if __name__ == "__main__":
     ## Example usage with Google Flan T5 being wrapped. ##
     import transformers
 
+    print("Starting EXAMPLE LLM SERVER... are you sure you meant to run this script?")
+
+    ## 1. Load your favourite model and tokenizer using Transformers library.
     MODEL_ID = "google/flan-t5-base"
     tokenizer = transformers.AutoTokenizer.from_pretrained(MODEL_ID)
     model = transformers.AutoModelForSeq2SeqLM.from_pretrained(MODEL_ID)
 
+    ## 2. Create a server with the wrapped model.
     server = LLM_Server(LLM_Server_Wrapper(MODEL_ID, tokenizer, model, {}))
+
+    ## 3. Start the server (default port = 5000)
     server.start()
 
         

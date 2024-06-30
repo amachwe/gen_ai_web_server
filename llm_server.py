@@ -1,23 +1,47 @@
-import requests
 import flask
-import json
 import abc
 import transformers
 
 class LogitStoreProcessor(transformers.LogitsProcessor):
+    """
+    A processor for storing logits and scores from language model predictions.
+
+    This class is designed to be used as part of a logits processor list in huggingface transformer based language models.
+
+    Attributes:
+        logits (list): A list to store logits.
+        scores (list): A list to store scores.
+
+    Methods:
+        There are no public methods defined in this excerpt.
+    """
     def __init__(self, ):
         self.logits = []
         self.scores = []
 
     def __call__(self, input_ids, scores):
-        
+        # Store logits and scores - nothing else...
         self.logits.append(input_ids.tolist())
         self.scores.append(scores.tolist())
         return scores
     
 class LLM_Server_Wrapper(abc.ABC):
+    """
+    A wrapper class for a language model.
 
-    def __init__(self, name, tokenizer, model, config:dict):
+    Methods:
+        request: Request a response from the language model wrapped.
+        info: Get information about the language model wrapped.
+    
+    """
+    def __init__(self, name:str, tokenizer, model, config:dict):
+        """
+        Parameters:
+            name (str): The name of the language model.
+            tokenizer: The tokenizer for the language model (from Transformers library).
+            model: The language model to wrap (from Transformers library).
+            config (dict): Configuration for the language model (including device, etc.)
+        """
         self.name = name
         self.config = config
         self.model = model
@@ -30,15 +54,25 @@ class LLM_Server_Wrapper(abc.ABC):
             self.model.to("cuda")
         
 
-    def request(self, prompt:str, process_logits:bool=False):
-
+    def request(self, prompt:str, process_logits:bool=False)->dict:
+        """
+        Request a response from the language model.
+        prompt (str): The prompt to send to the language model.
+        process_logits (bool): Whether to process logits and scores from the language model (can add overhead to the request). Default=False
+        
+        Returns:
+            dict: A dictionary containing the response, logits, and scores from the language model. Logits and scores are only returned if process_logits is True.
+        """
         max_length = self.config.get("max_length", None)
         num_return_sequences = self.config.get("num_return_sequences", 1)
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
 
+        ## Encode the prompt using the tokenizer
         enc = self.tokenizer.encode(prompt, return_tensors="pt").to(self.model.device)
 
+        
+        ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
         if process_logits:
             kwargs["logits_processor"] = self.logits_processor_list
@@ -53,14 +87,19 @@ class LLM_Server_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
 
-        
+        ## Call generate method of the wrapped model
         res = self.model.generate(enc, **kwargs)
        
         dec = self.tokenizer.decode(res[0], skip_special_tokens=True)
         
         return {"response":dec, "logits":self.logits_store.logits, "scores": self.logits_store.scores}
     
-    def info(self):
+    def info(self)->dict:
+        """
+        Get information about the model being wrapped.
+        Returns:
+            dict: A dictionary containing the name, configuration, and prompting hint for the wrapped model.
+        """
         return {
             "name": self.name,
             "config": self.config,
@@ -69,8 +108,23 @@ class LLM_Server_Wrapper(abc.ABC):
     
 
 class LLM_Server_Pipe_Wrapper(abc.ABC):
+    """
+    A wrapper class for a language model. Uses pipelines for text generation.
+
+    Methods:
+        request: Request a response from the language model wrapped.
+        info: Get information about the language model wrapped.
+    
+    """
 
     def __init__(self, name, tokenizer, model, config:dict):
+        """
+        Parameters:
+            name (str): The name of the language model.
+            tokenizer: The tokenizer for the language model (from Transformers library).
+            model: The language model to wrap (from Transformers library).
+            config (dict): Configuration for the language model (including device, etc.)
+        """
         self.name = name
         self.config = config
         self.model = model
@@ -85,14 +139,21 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         
 
     def request(self, prompt:str, process_logits:bool=False):
-
+        """
+        Request a response from the language model.
+        prompt (str): The prompt to send to the language model.
+        process_logits (bool): Whether to process logits and scores from the language model (can add overhead to the request). Default=False
+        
+        Returns:
+            dict: A dictionary containing the response, logits, and scores from the language model. Logits and scores are only returned if process_logits is True.
+        """
         max_length = self.config.get("max_length", None)
         num_return_sequences = self.config.get("num_return_sequences", 1)
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
 
         
-
+        ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
         if process_logits:
             kwargs["logits_processor"] = self.logits_processor_list
@@ -107,13 +168,18 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
 
-        
+        ## Using transformers pipelines for text generation instead of directly calling generate method.
         pipe = transformers.pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, device=self.model.device)
         out = pipe(prompt, **kwargs)
         
         return {"response":out[0]["generated_text"], "logits":self.logits_store.logits, "scores": self.logits_store.scores}
     
     def info(self):
+        """
+        Get information about the model being wrapped.
+        Returns:
+            dict: A dictionary containing the name, configuration, and prompting hint for the wrapped model.
+        """
         return {
             "name": self.name,
             "config": self.config,
@@ -123,16 +189,28 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
 
 
 class LLM_Server:
-
-    def __init__(self, wrapped_model:LLM_Server_Wrapper):
+    """
+    Main LLM Server class for serving a language model.
+    """
+    def __init__(self, wrapped_model:LLM_Server_Wrapper, port:int=5000):
+        """
+        Initiate the server with a wrapped language model.
+        Parameters:
+            wrapped_model (LLM_Server_Wrapper): The wrapped language model to serve.
+            port (int): The port to serve the language model on. Default=5000
+        """
         self.wrapped_model = wrapped_model
+        self.port = port
         self.app = flask.Flask(__name__)
 
         @self.app.route("/request", methods=["POST"])
         def request():
+            """
+            Request handler for the server. Handles requests for responses from the language model.
+            """
             data = flask.request.json
             prompt = data["prompt"]
-            process_logits = data.get("process_logits", False)
+            process_logits = data.get("process_logits", False) ## Optional parameter to process logits and scores from the language model.
             if prompt is None:
                 return "Prompt is required", 400
             if self.wrapped_model is None:
@@ -142,33 +220,39 @@ class LLM_Server:
         
         @self.app.route("/info", methods=["GET"])
         def info():
+            """
+            Request handler for the info method of the wrapped language model.
+            """
             if self.wrapped_model is None:
                 return "Model is not loaded", 500
             return self.wrapped_model.info()
         
         @self.app.route("/", methods=["GET"])
         def ping():
+            """
+            Method to check if the server is running.
+            """
             if self.wrapped_model is None:
                 return "Model is not loaded", 500
             return f"ping: {self.wrapped_model.name}"
     
     def start(self):
-        self.app.run(port=5000)
+        """
+        Call this method to start the server on the configured port (default=5000)
+        """
+        self.app.run(port=self.port)
 
 
 if __name__ == "__main__":
+    ## Example usage with Google Flan T5 being wrapped. ##
     import transformers
 
-    tokenizer = transformers.AutoTokenizer.from_pretrained("google/flan-t5-xxl")
-    model = transformers.AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-xxl")
+    MODEL_ID = "google/flan-t5-base"
+    tokenizer = transformers.AutoTokenizer.from_pretrained(MODEL_ID)
+    model = transformers.AutoModelForSeq2SeqLM.from_pretrained(MODEL_ID)
 
-    server = LLM_Server(LLM_Server_Wrapper("flan-t5-xxl", tokenizer, model, {}))
+    server = LLM_Server(LLM_Server_Wrapper(MODEL_ID, tokenizer, model, {}))
     server.start()
-
-
-        
-
-
 
         
 

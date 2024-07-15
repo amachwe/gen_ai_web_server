@@ -1,0 +1,4 @@
+INSERT INTO authors (author_id, name) VALUES ('A1', 'Author 1'), ('A2', 'Author 2'), ('A3', 'Author 3'); 
+INSERT INTO books (book_id, name, author_id) VALUES ('B1', 'Book 1', 'A1'), ('B2', 'Book 2', 'A2'), ('B3', 'Book 3', 'A3'), ('B4', 'Book 4', 'A1'), ('B5', 'Book 5', 'A2'), ('B6', 'Book 6', 'A3'); 
+INSERT INTO inventory (inv_id, book_id, quantity) VALUES ('I1', 'B1', 10), ('I2', 'B2', 5), ('I3', 'B3', 15), ('I4', 'B4', 12), ('I5', 'B5', 8), ('I6', 'B6', 20); 
+INSERT INTO transactions (tx_id, book_id, quantity_sold, sale_date) VALUES ('T1', 'B1', 2, '2022-01-01'), ('T2', 'B2', 3, '2022-01-02'), ('T3', 'B3', 4, '2022-01-03'), ('T4', 'B4', 1, '2022-01-04'), ('T5', 'B5', 2, '2022-01-05'), ('T6', 'B6', 3, '2022-01-06');

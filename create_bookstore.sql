@@ -1,0 +1,4 @@
+create table authors (author_id varchar(20) primary key not null, name text not null);
+create table books (book_id varchar(20) primary key not null, name text not null, author_id varchar(20) not null, FOREIGN KEY(author_id) REFERENCES authors(author_id));
+create table inventory (inv_id varchar(20) primary key not null, book_id varchar(20) not null, quantity int not null, FOREIGN KEY(book_id) REFERENCES books(book_id));
+create table transactions(tx_id varchar(20) primary key not null, book_id varchar(20) not null, quantity_sold int not null, sale_date date not null, FOREIGN KEY(book_id) REFERENCES books(book_id));

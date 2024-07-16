@@ -144,7 +144,7 @@ Generate data to populate the tables Authors (3 records), Books (7 records with 
 """
     ## Send the synthetic data generation prompt to the LLM and print the response
     print("Sent Syn Data")
-    response = requests.post(REQUEST_URL, data=json.dumps({"prompt":prompt_create_data}), headers=headers).json()
+    response = requests.post(REQUEST_URL, data=json.dumps({"prompt":prompt_create_data, "process_logits": True}), headers=headers).json()
     syn_data = extract_sql(response.get("response"))
     print(syn_data)
 

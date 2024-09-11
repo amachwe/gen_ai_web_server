@@ -19,6 +19,13 @@ class LogitStoreProcessor(transformers.LogitsProcessor):
         self.logits = []
         self.scores = []
 
+    def clear(self):
+        """
+        Clear the stored logits and scores.
+        """
+        self.logits = []
+        self.scores = []    
+
     def __call__(self, input_ids, scores):
         # Store logits and scores - nothing else...
         self.logits.append(input_ids.tolist())
@@ -52,7 +59,14 @@ class LLM_Server_Wrapper(abc.ABC):
 
         if config.get("device", "cpu") == "cuda":
             self.model.to("cuda")
-        
+    
+    def get_vocab(self):
+        """
+        Get the vocabulary of the language model.
+        Returns:
+            dict: A dictionary containing the vocabulary of the language model.
+        """
+        return self.model.get_vocab()
 
     def request(self, prompt:str, process_logits:bool=False)->dict:
         """
@@ -75,6 +89,10 @@ class LLM_Server_Wrapper(abc.ABC):
         ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
         if process_logits:
+            for p in self.logits_processor_list:
+                print("Clearing processor")
+                p.clear()
+
             kwargs["logits_processor"] = self.logits_processor_list
         
         if max_length:
@@ -136,7 +154,15 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         if config.get("device", "cpu") == "cuda":
             print("Moving model to cuda")
             self.model.to("cuda:0")
-        
+    
+    def get_vocab(self):
+        """
+        Get the vocabulary of the language model.
+        Returns:
+            dict: A dictionary containing the vocabulary of the language model.
+        """
+        return self.model.get_vocab()
+    
 
     def request(self, prompt:str, process_logits:bool=False):
         """
@@ -156,6 +182,10 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
         if process_logits:
+            for p in self.logits_processor_list:
+                print("Clearing processor")
+                p.clear()
+                
             kwargs["logits_processor"] = self.logits_processor_list
         
         if max_length:
@@ -202,6 +232,16 @@ class LLM_Server:
         self.wrapped_model = wrapped_model
         self.port = port
         self.app = flask.Flask(__name__)
+
+        @self.app.route("/vocab", methods=["GET"])
+        def vocab():
+            """
+            Request handler for the vocab method of the wrapped language model.
+            """
+            if self.wrapped_model is None:
+                return "Model is not loaded", 500
+            
+            return self.wrapped_model.tokenizer.get_vocab()
 
         @self.app.route("/request", methods=["POST"])
         def request():

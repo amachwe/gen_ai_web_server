@@ -81,6 +81,7 @@ class LLM_Server_Wrapper(abc.ABC):
         num_return_sequences = self.config.get("num_return_sequences", 1)
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
+        do_sample = self.config.get("do_sample", False)
 
         ## Encode the prompt using the tokenizer
         enc = self.tokenizer.encode(prompt, return_tensors="pt").to(self.model.device)
@@ -92,7 +93,7 @@ class LLM_Server_Wrapper(abc.ABC):
             for p in self.logits_processor_list:
                 print("Clearing processor")
                 p.clear()
-
+                
             kwargs["logits_processor"] = self.logits_processor_list
         
         if max_length:
@@ -104,6 +105,8 @@ class LLM_Server_Wrapper(abc.ABC):
        
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
+        kwargs["do_sample"] = do_sample
+
 
         ## Call generate method of the wrapped model
         res = self.model.generate(enc, **kwargs)
@@ -177,11 +180,13 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         num_return_sequences = self.config.get("num_return_sequences", 1)
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
+        do_sample = self.config.get("do_sample", False)
 
         
         ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
         if process_logits:
+
             for p in self.logits_processor_list:
                 print("Clearing processor")
                 p.clear()
@@ -197,6 +202,7 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
        
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
+        kwargs["do_sample"] = do_sample
 
         ## Using transformers pipelines for text generation instead of directly calling generate method.
         pipe = transformers.pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, device=self.model.device)

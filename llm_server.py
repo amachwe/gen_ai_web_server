@@ -59,7 +59,14 @@ class LLM_Server_Wrapper(abc.ABC):
 
         if config.get("device", "cpu") == "cuda":
             self.model.to("cuda")
-    
+
+    def print_kwargs(self, kwargs):
+        """
+        Print the kwargs dictionary.
+        """
+        for k,v in kwargs.items():
+            print(f"{k}: {v}")
+
     def get_vocab(self):
         """
         Get the vocabulary of the language model.
@@ -68,10 +75,10 @@ class LLM_Server_Wrapper(abc.ABC):
         """
         return self.model.get_vocab()
 
-    def request(self, prompt:str, process_logits:bool=False)->dict:
+    def request(self, prompt:list[dict], process_logits:bool=False)->dict:
         """
         Request a response from the language model.
-        prompt (str): The prompt to send to the language model.
+        prompt (list[dict]): The prompt to send to the language model.
         process_logits (bool): Whether to process logits and scores from the language model (can add overhead to the request). Default=False
         
         Returns:
@@ -82,6 +89,7 @@ class LLM_Server_Wrapper(abc.ABC):
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
         do_sample = self.config.get("do_sample", False)
+        debug_mode = self.config.get("debug_mode", False)
 
         ## Encode the prompt using the tokenizer
         enc = self.tokenizer.encode(prompt, return_tensors="pt").to(self.model.device)
@@ -89,6 +97,8 @@ class LLM_Server_Wrapper(abc.ABC):
         
         ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
+
+        kwargs["logits_processor"] = []
         if process_logits:
             for p in self.logits_processor_list:
                 print("Clearing processor")
@@ -107,6 +117,9 @@ class LLM_Server_Wrapper(abc.ABC):
         kwargs["num_return_sequences"] = num_return_sequences
         kwargs["do_sample"] = do_sample
 
+        if debug_mode:
+            self.print_kwargs(kwargs)
+            print(prompt)
 
         ## Call generate method of the wrapped model
         res = self.model.generate(enc, **kwargs)
@@ -158,6 +171,13 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
             print("Moving model to cuda")
             self.model.to("cuda:0")
     
+    def print_kwargs(self, kwargs):
+        """
+        Print the kwargs dictionary.
+        """
+        for k,v in kwargs.items():
+            print(f"{k}: {v}")
+
     def get_vocab(self):
         """
         Get the vocabulary of the language model.
@@ -167,10 +187,10 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         return self.model.get_vocab()
     
 
-    def request(self, prompt:str, process_logits:bool=False):
+    def request(self, prompt:list[dict], process_logits:bool=False):
         """
         Request a response from the language model.
-        prompt (str): The prompt to send to the language model.
+        prompt (list[dict]): The prompt to send to the language model.
         process_logits (bool): Whether to process logits and scores from the language model (can add overhead to the request). Default=False
         
         Returns:
@@ -181,10 +201,13 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
         do_sample = self.config.get("do_sample", False)
+        debug_mode = self.config.get("debug_mode", False)
 
         
         ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
+
+        kwargs["logits_processor"] = []
         if process_logits:
 
             for p in self.logits_processor_list:
@@ -203,6 +226,10 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
         kwargs["do_sample"] = do_sample
+
+        if debug_mode:
+            self.print_kwargs(kwargs)
+            print(prompt)
 
         ## Using transformers pipelines for text generation instead of directly calling generate method.
         pipe = transformers.pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, device=self.model.device)

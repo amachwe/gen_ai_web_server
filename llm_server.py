@@ -75,12 +75,13 @@ class LLM_Server_Wrapper(abc.ABC):
         """
         return self.model.get_vocab()
 
-    def request(self, prompt:list[dict], process_logits:bool=False)->dict:
+    def request(self, prompt:list[dict], process_logits:bool=False, run_config:dict={})->dict:
         """
         Request a response from the language model.
         prompt (list[dict]): The prompt to send to the language model.
         process_logits (bool): Whether to process logits and scores from the language model (can add overhead to the request). Default=False
-        
+        run_config (dict): Run configuration for the request (including do_sample, etc.)
+
         Returns:
             dict: A dictionary containing the response, logits, and scores from the language model. Logits and scores are only returned if process_logits is True.
         """
@@ -88,8 +89,9 @@ class LLM_Server_Wrapper(abc.ABC):
         num_return_sequences = self.config.get("num_return_sequences", 1)
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
-        do_sample = self.config.get("do_sample", False)
-        debug_mode = self.config.get("debug_mode", False)
+        do_sample = run_config.get("do_sample", self.config.get("do_sample", False))
+        debug_mode = run_config.get("debug_mode", self.config.get("debug_mode", False))
+  
 
         ## Encode the prompt using the tokenizer
         enc = self.tokenizer.encode(prompt, return_tensors="pt").to(self.model.device)
@@ -116,6 +118,7 @@ class LLM_Server_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
         kwargs["do_sample"] = do_sample
+
 
         if debug_mode:
             self.print_kwargs(kwargs)
@@ -187,11 +190,12 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         return self.model.get_vocab()
     
 
-    def request(self, prompt:list[dict], process_logits:bool=False):
+    def request(self, prompt:list[dict], process_logits:bool=False, run_config:dict={})->dict:
         """
         Request a response from the language model.
         prompt (list[dict]): The prompt to send to the language model.
         process_logits (bool): Whether to process logits and scores from the language model (can add overhead to the request). Default=False
+        run_config (dict): Run configuration for the request (including do_sample, etc.)
         
         Returns:
             dict: A dictionary containing the response, logits, and scores from the language model. Logits and scores are only returned if process_logits is True.
@@ -200,9 +204,9 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         num_return_sequences = self.config.get("num_return_sequences", 1)
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
-        do_sample = self.config.get("do_sample", False)
-        debug_mode = self.config.get("debug_mode", False)
-
+        do_sample = run_config.get("do_sample", self.config.get("do_sample", False))
+        debug_mode = run_config.get("debug_mode", self.config.get("debug_mode", False))
+        
         
         ## Handling configuration options. Expand in future to improve tunability of LLMs.
         kwargs = {}
@@ -226,6 +230,7 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
         kwargs["do_sample"] = do_sample
+  
 
         if debug_mode:
             self.print_kwargs(kwargs)
@@ -284,12 +289,13 @@ class LLM_Server:
             data = flask.request.json
             prompt = data["prompt"]
             process_logits = data.get("process_logits", False) ## Optional parameter to process logits and scores from the language model.
+            run_config = data.get("run_config", {})
             if prompt is None:
                 return "Prompt is required", 400
             if self.wrapped_model is None:
                 return "Model is not loaded", 500
             
-            return self.wrapped_model.request(prompt, process_logits)
+            return self.wrapped_model.request(prompt, process_logits, run_config)
         
         @self.app.route("/info", methods=["GET"])
         def info():

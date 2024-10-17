@@ -101,11 +101,13 @@ class LLM_Server_Wrapper(abc.ABC):
         kwargs = {}
 
         kwargs["logits_processor"] = []
-        if process_logits:
+        
+        if self.logits_processor_list:
             for p in self.logits_processor_list:
                 print("Clearing processor")
                 p.clear()
-                
+
+        if process_logits:   
             kwargs["logits_processor"] = self.logits_processor_list
         
         if max_length:
@@ -122,6 +124,7 @@ class LLM_Server_Wrapper(abc.ABC):
 
         if debug_mode:
             self.print_kwargs(kwargs)
+            print("Process Logits: ", process_logits)
             print(prompt)
 
         ## Call generate method of the wrapped model
@@ -212,12 +215,13 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         kwargs = {}
 
         kwargs["logits_processor"] = []
-        if process_logits:
-
+        
+        if self.logits_processor_list:
             for p in self.logits_processor_list:
                 print("Clearing processor")
                 p.clear()
-                
+
+        if process_logits:      
             kwargs["logits_processor"] = self.logits_processor_list
         
         if max_length:
@@ -234,6 +238,7 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
 
         if debug_mode:
             self.print_kwargs(kwargs)
+            print("Process Logits: ", process_logits)
             print(prompt)
 
         ## Using transformers pipelines for text generation instead of directly calling generate method.

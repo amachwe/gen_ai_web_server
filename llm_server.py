@@ -300,7 +300,7 @@ class LLM_Server:
             if self.wrapped_model is None:
                 return "Model is not loaded", 500
             
-            return self.wrapped_model.tokenizer.get_vocab()
+            return self.wrapped_model.get_vocab()
 
         @self.app.route("/request", methods=["POST"])
         def request():

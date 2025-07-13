@@ -12,6 +12,13 @@ class Client(object):
 
         }
 
+    def prompt_to_response(self, prompt:str, debug=False)-> str:
+        """
+        Helper method to convert a prompt to a response
+        """
+        response = self.send_request([{"role": "user", "content": prompt}])
+        return self.extract_response(response)
+    
     def send_request(self, prompt:list[dict]):
         """
         Helper method to send a request to the LLM
@@ -104,3 +111,27 @@ class GeminiClient(object):
         Helper method to extract the response from the LLM
         """
         return response.text
+
+import anthropic
+
+class AnthropicClient(object):
+
+    def __init__(self):
+        self.client = anthropic.Anthropic()
+           
+
+    def send_request(self, prompt:list[dict], process_logits:bool=False, run_config:dict={}):
+        """
+        Helper method to send a request to the Anthropic LLM
+        """
+        model_name = run_config.get("model_name", "claude-3-5-haiku-latest")
+        max_tokens = run_config.get("max_tokens", 1000)
+        temperature = run_config.get("temperature", 0)
+        system = run_config.get("system", "")
+        return self.client.messages.create(model=model_name, max_tokens=max_tokens, temperature=temperature, system=system, messages=prompt)
+    
+    def extract_response(self, response):
+        """
+        Helper method to extract the response from the LLM
+        """
+        return response.content

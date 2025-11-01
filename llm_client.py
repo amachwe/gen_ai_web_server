@@ -70,13 +70,16 @@ class OpenAIClient(object):
         Helper method to send a request to the OpenAI LLM
         """
         model_name = run_config.get("model_name", "gpt-4o-mini")
-        return self.client.chat.completions.create(model=model_name, messages=prompt, logprobs=process_logits).choices[0].message
-    
+        response = self.client.chat.completions.create(model=model_name, messages=prompt, logprobs=process_logits, top_logprobs=5)
+        
+        return response
+
+
     def extract_response(self, response):
         """
         Helper method to extract the response from the LLM
         """
-        return response.content
+        return response.choices[0].message.content
     
 import google.generativeai as genai
 import os

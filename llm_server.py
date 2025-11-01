@@ -31,8 +31,20 @@ class LogitStoreProcessor(transformers.LogitsProcessor):
         self.logits.append(input_ids.tolist())
         self.scores.append(scores.tolist())
         return scores
-    
-class LLM_Server_Wrapper(abc.ABC):
+
+class Wrapper(abc.ABC):
+
+    def request(self, prompt:list[dict], *args, **kwargs,)->dict:
+        pass
+
+    def info(self)->dict:
+        pass
+
+    def get_vocab(self)->dict:
+        pass
+
+
+class LLM_Server_Wrapper(Wrapper):
     """
     A wrapper class for a language model.
 
@@ -90,6 +102,7 @@ class LLM_Server_Wrapper(abc.ABC):
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
         do_sample = run_config.get("do_sample", self.config.get("do_sample", False))
+        temperature = run_config.get("temperature", self.config.get("temperature", 0.0))
         debug_mode = run_config.get("debug_mode", self.config.get("debug_mode", False))
   
 
@@ -120,6 +133,7 @@ class LLM_Server_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
         kwargs["do_sample"] = do_sample
+        kwargs["temperature"] = temperature
 
 
         if debug_mode:
@@ -147,7 +161,7 @@ class LLM_Server_Wrapper(abc.ABC):
         }
     
 
-class LLM_Server_Pipe_Wrapper(abc.ABC):
+class LLM_Server_Pipe_Wrapper(Wrapper):
     """
     A wrapper class for a language model. Uses pipelines for text generation.
 
@@ -208,6 +222,7 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         output_scores = self.config.get("output_scores", None)
         max_new_tokens = self.config.get("max_new_tokens", 500)
         do_sample = run_config.get("do_sample", self.config.get("do_sample", False))
+        temperature = run_config.get("temperature", self.config.get("temperature", 0.0))
         debug_mode = run_config.get("debug_mode", self.config.get("debug_mode", False))
         
         
@@ -234,6 +249,7 @@ class LLM_Server_Pipe_Wrapper(abc.ABC):
         kwargs["max_new_tokens"] = max_new_tokens
         kwargs["num_return_sequences"] = num_return_sequences
         kwargs["do_sample"] = do_sample
+        kwargs["temperature"] = temperature
   
 
         if debug_mode:
@@ -265,7 +281,7 @@ class LLM_Server:
     """
     Main LLM Server class for serving a language model.
     """
-    def __init__(self, wrapped_model:LLM_Server_Wrapper, port:int=5000):
+    def __init__(self, wrapped_model:Wrapper, port:int=5000):
         """
         Initiate the server with a wrapped language model.
         Parameters:
@@ -284,7 +300,7 @@ class LLM_Server:
             if self.wrapped_model is None:
                 return "Model is not loaded", 500
             
-            return self.wrapped_model.tokenizer.get_vocab()
+            return self.wrapped_model.get_vocab()
 
         @self.app.route("/request", methods=["POST"])
         def request():

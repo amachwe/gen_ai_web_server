@@ -1,0 +1,21 @@
+INFO:langchain_custom_model:Tool Name: average, Args: {'x': 10, 'y': 20}
+INFO:langchain_custom_model:Tool Response: 15.0
+INFO:langchain_custom_model:Tool Response: average -- 
+Original Message:
+ What is the average of 10 and 20?
+Tool Response: 15.0
+INFO:langchain_custom_model:Tool Response: The average of 10 and 20 is calculated by adding the two numbers together and then dividing by 2. So, (10 + 20) / 2 = 30 / 2 = 15. Therefore, the average of 10 and 20 is 15.
+INFO:langchain_custom_model:Tool Name: move, Args: {'x': 10, 'y': 20, 'distance': 5}
+INFO:langchain_custom_model:Tool Response: (15.0, 25.0)
+INFO:langchain_custom_model:Tool Response: move -- 
+Original Message:
+ Move point (10, 20) by 5 units.
+Tool Response: (15.0, 25.0)
+INFO:langchain_custom_model:Tool Response: The tool response indicates that the point (10, 20) has been moved 5 units to the right and 5 units up, resulting in the new coordinates (15, 25). This is a correct interpretation of the original message.
+INFO:langchain_custom_model:Tool Name: reverse, Args: {'x': 'I love programming.'}
+INFO:langchain_custom_model:Tool Response: .gnimmargorp evol I
+INFO:langchain_custom_model:Tool Response: reverse -- 
+Original Message:
+ Reverse the string: I love programming.
+Tool Response: .gnimmargorp evol I
+INFO:langchain_custom_model:Tool Response: The reversed string of "I love programming." is ".gnimmargorp evol I".
